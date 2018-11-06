@@ -4,19 +4,24 @@ RAW_DATA := $(wildcard $(RAW_DATA_DIR)/*.csv)
 DATA_DIR := data
 DATA := $(RAW_DATA:$(RAW_DATA_DIR)/%=$(DATA_DIR)/%)
 
-all: $(DATA)
+.PHONY: all
+all: analysis
 
 .PHONY: clean
-
 clean:
 	-rm -r $(DATA_DIR)
+	-rm *.pyc
 
-.PHONY: foo
+.PHONY: test
+test:
+	python -m unittest discover
 
-foo: $(DATA)
+.PHONY: analysis
+analysis: $(DATA)
+	python analyze.py $^
 
 $(DATA_DIR)/%: $(RAW_DATA_DIR)/% | $(DATA_DIR)
-	./convert.py $< > $@
+	python convert.py $< > $@
 
 $(DATA_DIR):
 	mkdir -p $@
