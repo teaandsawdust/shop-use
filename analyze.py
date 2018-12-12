@@ -6,9 +6,9 @@ import sys
 from datetime import date
 from datetime import datetime
 from datetime import time
-from datetime import timedelta
 
-GUESS_DURATION = timedelta(hours=2)
+from json import dumps
+
 DAY_BEGIN = time(00, 00, 00)
 DAY_END = time(23, 59, 00)
 
@@ -97,6 +97,17 @@ class Node:
             p = p.next()
         return head
 
+    def as_list(self):
+        result = []
+        p = self
+
+        while p:
+            result.append(p.get())
+            p = p.next()
+
+        return result
+
+
 class DayTally:
     def __init__(self, d):
         self._date = d
@@ -179,50 +190,47 @@ def getdate(begin, end):
     else:
         return None
 
-def normalize(begin, end):
-    assert begin or end
-
-    if begin and end:
-        pass
-    elif begin:
-        end = begin + GUESS_DURATION
-        if end.date() > begin.date():
-            end = datetime.combine(begin.date(), DAY_END)
-    else:
-        begin = end - GUESS_DURATION
-        if begin.date() < end.date():
-            begin = datetime.combine(end.date(), DAY_BEGIN)
-
-    return begin, end
-
 def analyze(filename):
     dailies = dict()
-    with open(filename, 'rb') as csvfile:
-        has_header = csv.Sniffer().has_header(csvfile.read(1024))
-        csvfile.seek(0)
-
+    with open(filename, 'r') as csvfile:
         csvreader = csv.reader(csvfile)
 
-        if has_header:
-            csvreader.next()
-
         for row in csvreader:
-            begin = isoparse(row[2])
-            end = isoparse(row[3])
+            try:
+                begin = isoparse(row[2])
+                end = isoparse(row[3])
 
-            d = getdate(begin, end)
-            if not d:
-                continue
+                d = getdate(begin, end)
+                if not d:
+                    continue
 
-            begin, end = normalize(begin, end)
+                k = str(d)
 
-            dt = dailies.get(d, daytally(d))
-            dt.add(begin, end)
+                dt = dailies.get(d, DayTally(d))
+                dt.add(begin, end)
+                dailies[k] = dt
+            except Exception as e:
+                print("Failed at record {}\n{}".format(
+                    csvreader.line_num, row))
+                raise e
+
     return dailies
-        
+
+def merge(into, sub):
+    for date in sub:
+        assert date not in into, "Not implemented yet"
+
+        into[date] = sub[date]
+
 def main():
+    all_days = dict()
+
     for filename in sys.argv[1:]:
         dailies = analyze(filename)
+
+        merge(all_days, dailies)
+
+    print all_days
 
 if __name__ == "__main__":
     main()

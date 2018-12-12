@@ -216,16 +216,15 @@ class TestDayTally(unittest.TestCase):
         a.add(third_begin, third_end)
         a.add(fourth_begin, fourth_end)
 
-        expected = Node.list_of(self.tt_day_begin,
+        expected = [self.tt_day_begin,
             self._ttally_of(second_begin, 2),
             self._ttally_of(second_end, 1),
             self._ttally_of(self.first_begin, 2),
             self._ttally_of(third_begin, 3),
             self._ttally_of(self.first_end, 2),
-            self._ttally_of(third_end, 0))
+            self._ttally_of(third_end, 0)]
 
-        self.assertSameTallies(a.get_tallies(), expected)
+        expected_nodes = Node.list_of(*expected)
 
-
-
-
+        self.assertSameTallies(a.get_tallies(), expected_nodes)
+        self.assertEquals(a.get_tallies().as_list(), expected)
