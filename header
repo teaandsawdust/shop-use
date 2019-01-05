@@ -1,0 +1,7 @@
+set term pdf background rgb 'white' size 11in,8.5in
+set output 'OUTPUT_FILE'
+set xdata time
+set timefmt '%H:%M'
+set xrange ['07:00':'23:30']
+set yrange [0:10]
+set multiplot

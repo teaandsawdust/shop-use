@@ -1,6 +1,9 @@
 #!/usr/bin/python
 
+from __future__ import print_function
+
 import csv
+import os
 import sys
 
 from datetime import date
@@ -12,15 +15,27 @@ from json import dumps
 DAY_BEGIN = time(00, 00, 00)
 DAY_END = time(23, 59, 00)
 
+ANALYSIS_DIR = 'analysis'
+
+WEEK_DAYS = [
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday'
+        ]
+
 class TTally:
     def __init__(self, tm, tally=0):
         assert isinstance(tm, time)
         self._time = tm
-        self._tally = tally 
+        self._tally = tally
 
     @classmethod
-    def tally_up(cls, dt, previous):
-        return TTally(dt.time(), previous.tally() + 1)
+    def tally_same(cls, dt, previous):
+        return TTally(dt.time(), previous.tally())
 
     @classmethod
     def tally_down(cls, dt, previous):
@@ -116,7 +131,7 @@ class DayTally:
     def add(self, begin, end):
         assert (self.date() == begin.date() and self.date() == end.date())
         assert begin.time() <= end.time()
-        
+
         begun = False
         ended = False
 
@@ -129,20 +144,20 @@ class DayTally:
             if not p.next():
                 if not begun:
                     # gets bumped the next time through the loop if needed
-                    p.insert(TTally(begin.time(), p.get().tally()))
+                    p.insert(TTally.tally_same(begin, pi))
                     begun = True
                     p = p.next()
                     continue
                 if not ended:
                     ended = True
 
-                    # p is pointing at a node with the same time as the end 
+                    # p is pointing at a node with the same time as the end
                     # time. Don't bump.
                     if pi.same_time(end):
                         break
 
                     pi.bump()
-                    p.insert(TTally.tally_down(end, p.get()))
+                    p.insert(TTally.tally_down(end, pi))
 
                     assert p.next().get().tally() == 0
 
@@ -154,14 +169,14 @@ class DayTally:
                 if ni.is_after(begin):
                     # start time is between p time and next time
                     # will bump on next iteration.
-                    p.insert(TTally(begin.time(), pi.tally()))
+                    p.insert(TTally.tally_same(begin, pi))
                     begun = True
                 if ni.same_time(begin):
                     begun = True
             elif not ended:
                 pi.bump()
                 if ni.is_after(end):
-                    p.insert(TTally(end.time(), pi.tally() - 1))
+                    p.insert(TTally.tally_down(end, pi))
                     ended = True
                     break
                 if ni.same_time(end):
@@ -170,7 +185,7 @@ class DayTally:
             p = p.next();
 
         assert begun and ended, "Returning from add: begun {}, ended {}".format(begun, ended)
-                    
+
     def get_tallies(self):
         return self._tallies
 
@@ -206,7 +221,7 @@ def analyze(filename):
 
                 k = str(d)
 
-                dt = dailies.get(d, DayTally(d))
+                dt = dailies.get(k, DayTally(d))
                 dt.add(begin, end)
                 dailies[k] = dt
             except Exception as e:
@@ -222,6 +237,40 @@ def merge(into, sub):
 
         into[date] = sub[date]
 
+def plot_day(node, out):
+    prev = None
+
+    while node:
+        ttally = node.get()
+
+        # skip non-useful start of day node
+        if ttally.time() == time(0, 0, 0):
+            node = node.next()
+            continue
+
+        if prev:
+            prev_tally = prev.get().tally()
+        else:
+            prev_tally = 0
+
+        print("{} {}".format(ttally.time(), prev_tally), file=out)
+        print("{} {}".format(ttally.time(), ttally.tally()), file=out)
+
+        prev = node
+        node = node.next()
+
+
+def dump_dats(dailies):
+    for date, daily in dailies.iteritems():
+        # sanity checks...
+        assert date == str(daily.date())
+        assert len(daily.get_tallies().as_list()) > 1
+
+        wd_file = os.path.join(ANALYSIS_DIR, WEEK_DAYS[daily.date().weekday()], date + '.dat')
+
+        with open(wd_file, 'w') as out:
+            plot_day(daily.get_tallies(), out)
+
 def main():
     all_days = dict()
 
@@ -230,7 +279,7 @@ def main():
 
         merge(all_days, dailies)
 
-    print all_days
+    dump_dats(all_days)
 
 if __name__ == "__main__":
     main()
