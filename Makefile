@@ -17,7 +17,7 @@ PLOT_HEADER := header
 PLOT_FOOTER := footer
 
 GRAPH_DIR := graphs
-GRAPH_FILES := $(WEEK_DAYS:%=$(GRAPH_DIR)/%.pdf)
+GRAPH_FILES := $(WEEK_DAYS:%=$(GRAPH_DIR)/%.svg)
 
 DIRS := $(DATA_DIR) $(ANALYSIS_DIR) $(GRAPH_DIR)
 
@@ -48,14 +48,15 @@ $(DATA_DIR)/%: $(RAW_DATA_DIR)/% convert.py | $(DATA_DIR)
 $(DAY_DIRS): $(ANALYSIS_DIR)/%day: | $(ANALYSIS_DIR)
 	mkdir $@
 
-$(PLOT_FILES): %.gnuplot: day_dats $(PLOT_HEADER) $(PLOT_FOOTER) | $(ANALYSIS_DIR)
-	m4 -DOUTPUT_FILE=$(GRAPH_DIR)/$(notdir $*).pdf $(PLOT_HEADER) > $@
+$(PLOT_FILES): %.gnuplot: day_dats $(PLOT_HEADER) $(PLOT_FOOTER) Makefile | $(ANALYSIS_DIR)
+	m4 -DOUTPUT_FILE=$(GRAPH_DIR)/$(notdir $*).svg \
+		-DWEEKDAY=$(notdir $*) $(PLOT_HEADER) > $@
 	for file in $*/*; do \
-		echo "plot '$${file}' using 1:2 with lines notitle" >> $@; \
+		echo "plot '$${file}' using 1:2 with filledcurves lc \"black\" fs transparent solid 0.10 notitle" >> $@; \
 	done
 	cat $(PLOT_FOOTER) >> $@
 
-$(GRAPH_FILES): $(GRAPH_DIR)/%.pdf: $(ANALYSIS_DIR)/%.gnuplot day_dats | $(GRAPH_DIR)
+$(GRAPH_FILES): $(GRAPH_DIR)/%.svg: $(ANALYSIS_DIR)/%.gnuplot day_dats | $(GRAPH_DIR)
 	gnuplot $<
 
 $(DIRS): %:
