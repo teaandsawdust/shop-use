@@ -1,7 +1,7 @@
 set term svg background rgb 'white' size 1100,850
 set title 'WEEKDAY shop use' font "Arial,30"
 set xlabel 'time of day'
-set ylabel 'number of people (darker shading -> more days with that number of people)
+set ylabel 'number of people (darker shading -> more popluar time)
 set output 'OUTPUT_FILE'
 set xdata time
 set timefmt '%H:%M'
